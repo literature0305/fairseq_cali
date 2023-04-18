@@ -207,10 +207,6 @@ class TransformerModelBase(FairseqEncoderDecoderModel):
                 # decoder_out[0] torch.Size([56, 69, 6632])
                 conf_tmp = (prev_output_tokens_one_hot[:,1:] * torch.softmax(decoder_out[0], dim=-1)[:,:-1]).max(-1).values
 
-                # print('conf:', confidence.size())
-                # print('conf_tmp:', conf_tmp.size())
-                # print('prev', prev_output_tokens_one_hot.size())
-                # print('decoder_out[0]', decoder_out[0].size())
                 confidence[:,1:] = conf_tmp.detach()
 
                 if print_option:

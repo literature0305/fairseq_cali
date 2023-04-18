@@ -752,13 +752,7 @@ class MultiheadAttention(FairseqIncrementalDecoder):
         attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len, src_len)
 
         if self.confidence is not None and self.calibration_mode is not None and ('_conf' in self.calibration_mode):
-            # self.confidence = self.confidence.view(bsz,1,tgt_len,1) # it makes error for recursive decoding with sequence generator (Error maybe)
-            # self.confidence = self.confidence.view(bsz,1,-1,1) #  (Error maybe)
             self.confidence = self.confidence.view(bsz,1,1,-1)
-            # print('conf:', self.confidence.size())
-            # print('attn_weights:', attn_weights.size())
-            # print('query', query.size())
-            # print('key', key.size())
 
         if self.calibration_mode == 'att_temp':
             attn_weights = attn_weights * (1 + self.scaling_factor_for_att_hidden_temp * self.lr_regularizer)
@@ -804,17 +798,6 @@ class MultiheadAttention(FairseqIncrementalDecoder):
                 attn_weights = attn_weights * (1+self.scaling_factor_for_conf_mh_ad_att_hidden_temp1.view(1,self.num_heads,1,1) * self.lr_regularizer + entropy_att_weight * self.scaling_factor_for_conf_mh_ad_att_hidden_temp2.view(1,self.num_heads,1,1) * self.lr_regularizer + self.confidence * self.scaling_factor_for_conf_mh_ad_att_hidden_temp3.view(1,self.num_heads,1,1) * self.lr_regularizer)
             else:
                 attn_weights = attn_weights * (1+self.scaling_factor_for_conf_mh_ad_att_hidden_temp1.view(1,self.num_heads,1,1) * self.lr_regularizer + entropy_att_weight * self.scaling_factor_for_conf_mh_ad_att_hidden_temp2.view(1,self.num_heads,1,1) * self.lr_regularizer)
-        # att-temp (for hard-coded decoding)
-        # attn_weights = attn_weights * (1 + self.scaling_factor_for_att_hidden_temp * self.lr_regularizer)
-        # mh-att-temp
-        # attn_weights = attn_weights * (1 + self.scaling_factor_for_mh_att_hidden_temp.view(1,self.num_heads,1,1) * self.lr_regularizer)
-        # attn_weights = attn_weights * (1 + self.scaling_factor_for_mh_att_hidden_temp.view(1,self.num_heads,1,1) * 1.2)
-
-        # att-temp (for hard-coded decoding + manual scaling)
-        # attn_weights = attn_weights * (1 + self.scaling_factor_for_att_hidden_temp * 0.0)
-        # mh-att-temp
-        # attn_weights = attn_weights * (1 + self.scaling_factor_for_mh_att_hidden_temp.view(1,self.num_heads,1,1) * 1.2)
-        # attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
         ###################################################################################################################################################################
 
         if attn_mask is not None:

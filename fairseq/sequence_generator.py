@@ -361,10 +361,6 @@ class SequenceGenerator(nn.Module):
             original_batch_idxs = torch.arange(0, bsz).type_as(tokens)
 
         for step in range(max_len + 1):  # one extra step for EOS marker
-            # print('step:', step)
-            # print('tokens:', tokens[0, : step + 1])
-            # print('tokens size1:', tokens[:,:step+1].size())
-            # print('conf size1:', confidence[:, : step + 1].size())
             # reorder decoder internal states based on the prev choice of beams
             if reorder_state is not None:
                 if batch_idxs is not None:
@@ -381,8 +377,6 @@ class SequenceGenerator(nn.Module):
                     encoder_outs, reorder_state
                 )
             
-            # print('step:', step)
-            # print('confidence:', confidence.size()) # torch.Size([1280, 202])
             with torch.autograd.profiler.record_function(
                 "EnsembleModel: forward_decoder"
             ):
@@ -394,7 +388,6 @@ class SequenceGenerator(nn.Module):
                     confidence=confidence[:, : step + 1],
                 )
                 lprobs_backup=torch.softmax(lprobs.clone(), dim=-1)
-                # print('lprobs:', lprobs.size()) # lprobs: torch.Size([1280, 6632])
 
             # update confidence ver1.0 not good confidence (same confidence for same prev-tokens)
             # confidence[:,step+1] = torch.softmax(lprobs, dim=-1).max(-1).values
@@ -423,13 +416,9 @@ class SequenceGenerator(nn.Module):
                 and step < prefix_tokens.size(1)
                 and step < max_len
             ):
-                # print('prefix_tokens:', prefix_tokens)
                 lprobs, tokens, scores = self._prefix_tokens(
                     step, lprobs, scores, tokens, prefix_tokens, beam_size
                 )
-                # print('tokens2:', tokens[:9, : step + 1])
-                # print('conf2:', confidence[:9, : step + 1])
-                # print('scores2:', scores[:3, : step + 1])
             else:
                 if step < self.min_len:
                     # minimum length constraint (does not apply if using prefix_tokens)
@@ -437,8 +426,6 @@ class SequenceGenerator(nn.Module):
 
                 if self.token_indices_to_suppress is not None:
                     lprobs[:, self.token_indices_to_suppress] = -math.inf
-            # print('tokens size2:', tokens[:,:step+1].size())
-            # print('conf size2:', confidence[:, : step + 1].size())
 
             # Record attention scores, only support avg_attn_scores is a Tensor
             if avg_attn_scores is not None:
@@ -455,8 +442,6 @@ class SequenceGenerator(nn.Module):
             eos_scores = torch.empty(0).to(
                 scores
             )  # scores of hypothesis ending with eos (finished sentences)
-            # print('tokens size3:', tokens[:,:step+1].size())
-            # print('conf size3:', confidence[:, : step + 1].size())
 
             if self.should_set_src_lengths:
                 self.search.set_src_lengths(src_lengths)
@@ -472,14 +457,6 @@ class SequenceGenerator(nn.Module):
                 tokens[:, : step + 1],
                 original_batch_idxs,
             )
-            # print('cand_indices:', cand_indices[:9])
-            # print('tokens3:', tokens[:9, : step + 1])
-
-            # print('cand_scores',cand_scores)
-            # print('cand_indices',cand_indices)
-            # print('cand_beams',cand_beams)
-            # print('tokens size4:', tokens[:,:step+1].size())
-            # print('conf size4:', confidence[:, : step + 1].size())
 
             # cand_bbsz_idx contains beam indices for the top candidate
             # hypotheses, with a range of values: [0, bsz*beam_size),
@@ -518,10 +495,6 @@ class SequenceGenerator(nn.Module):
                     max_len,
                 )
                 num_remaining_sent -= len(finalized_sents)
-            # print('finalized_sents', finalized_sents)
-            # print('tokens size5:', tokens[:,:step+1].size())
-            # print('conf size5:', confidence[:, : step + 1].size())
-            # print('tokens3', tokens.size())
 
             assert num_remaining_sent >= 0
             if num_remaining_sent == 0:
@@ -544,8 +517,6 @@ class SequenceGenerator(nn.Module):
                 batch_idxs = torch.arange(
                     bsz, device=cand_indices.device
                 ).masked_select(batch_mask)
-
-                # print('batch_idxs', batch_idxs)
 
                 # Choose the subset of the hypothesized constraints that will continue
                 self.search.prune_sentences(batch_idxs)
@@ -573,9 +544,6 @@ class SequenceGenerator(nn.Module):
                 bsz = new_bsz
             else:
                 batch_idxs = None
-            # print('tokens3.5:', tokens[:9, : step + 1])
-            # print('tokens size6:', tokens[:,:step+1].size())
-            # print('conf size6:', confidence[:, : step + 1].size())
 
             # Set active_mask so that values > cand_size indicate eos hypos
             # and values < cand_size indicate candidate active hypos.
@@ -588,7 +556,7 @@ class SequenceGenerator(nn.Module):
                 eos_mask.type_as(cand_offsets) * cand_size,
                 cand_offsets[: eos_mask.size(1)],
             )
-            # print('active_mask', active_mask)
+
             # get the top beam_size active hypotheses, which are just
             # the hypos with the smallest values in active_mask.
             # {active_hypos} indicates which {beam_size} hypotheses
@@ -597,14 +565,11 @@ class SequenceGenerator(nn.Module):
             new_cands_to_ignore, active_hypos = torch.topk(
                 active_mask, k=beam_size, dim=1, largest=False
             )
-            # print('new_cands_to_ignore', new_cands_to_ignore)
-            # print('active_hypos', active_hypos)
 
             # update cands_to_ignore to ignore any finalized hypos.
             cands_to_ignore = new_cands_to_ignore.ge(cand_size)[:, :beam_size]
             # Make sure there is at least one active item for each sentence in the batch.
             assert (~cands_to_ignore).any(dim=1).all()
-            # print('cands_to_ignore', cands_to_ignore)
 
             # update cands_to_ignore to ignore any finalized hypos
 
@@ -612,8 +577,6 @@ class SequenceGenerator(nn.Module):
             # can be selected more than once).
             active_bbsz_idx = torch.gather(cand_bbsz_idx, dim=1, index=active_hypos)
             active_scores = torch.gather(cand_scores, dim=1, index=active_hypos)
-            # print('active_bbsz_idx', active_bbsz_idx)
-            # print('active_scores', active_scores)
 
             active_bbsz_idx = active_bbsz_idx.view(-1)
             active_scores = active_scores.view(-1)
