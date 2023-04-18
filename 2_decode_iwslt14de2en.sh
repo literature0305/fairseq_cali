@@ -3,11 +3,10 @@
 # evaluation
 fairseq-generate data-bin/iwslt14.tokenized.de-en \
     --path checkpoints/checkpoint_best.pt \
-    --batch-size 4 --beam 100 --remove-bpe --calibration-mode att_temp_conf
-    
-    # --batch-size 128 --beam 20 --remove-bpe
-
+    --batch-size 128 --beam 20 --remove-bpe --calibration-mode None        
 # Decoding config (calibration modes)
+
+# 'None'
 # 'temperature'
 # 'att_temp'
 # 'mh_att_temp'

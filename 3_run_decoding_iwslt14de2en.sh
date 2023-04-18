@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
 
 # Set the number of times to run the script and the arguments to pass
-# N=6
 arguments=(None temperature att_temp mh_att_temp ad_att_temp mh_ad_att_temp)
 N=${#arguments[@]}
 # arguments=(att_temp_conf mh_att_temp_conf ad_att_temp_conf mh_ad_att_temp_conf)
-
 
 # Define the function that will run the script recursively
 function run_recursive {
     # Get the number of arguments
     num_args=$1
     shift
-    to_write=errlog006-8_decode_400beam_${1}
+    to_write=decode_400beam_${1}
     # If there are no more arguments, exit the function
     if [[ $num_args -eq 0 ]]; then
         return
@@ -20,7 +18,7 @@ function run_recursive {
     # Run the script with the next argument
     fairseq-generate data-bin/iwslt14.tokenized.de-en \
         --path checkpoints/checkpoint_best.pt \
-        --batch-size 1 --beam 400 --remove-bpe --calibration-mode "$1" &> $to_write
+        --batch-size 32 --beam 20 --remove-bpe --calibration-mode "$1" &> $to_write
 
     # Recursively call this function with the remaining arguments
     run_recursive "$((num_args - 1))" "${@:2}"
