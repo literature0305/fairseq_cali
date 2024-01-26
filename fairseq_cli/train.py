@@ -317,20 +317,52 @@ def train(
     )
     progress_valid = progress_bar.progress_bar(
         itr_valid,
+        log_format=cfg.common.log_format,
+        log_file=cfg.common.log_file,
+        log_interval=cfg.common.log_interval,
         epoch=epoch_itr.epoch,
+        aim_repo=(
+            cfg.common.aim_repo
+            if distributed_utils.is_master(cfg.distributed_training)
+            else None
+        ),
+        aim_run_hash=(
+            cfg.common.aim_run_hash
+            if distributed_utils.is_master(cfg.distributed_training)
+            else None
+        ),
+        aim_param_checkpoint_dir=cfg.checkpoint.save_dir,
+        tensorboard_logdir=(
+            cfg.common.tensorboard_logdir
+            if distributed_utils.is_master(cfg.distributed_training)
+            else None
+        ),
+        default_log_format=("tqdm" if not cfg.common.no_progress_bar else "simple"),
+        wandb_project=(
+            cfg.common.wandb_project
+            if distributed_utils.is_master(cfg.distributed_training)
+            else None
+        ),
+        wandb_run_name=os.environ.get(
+            "WANDB_NAME", os.path.basename(cfg.checkpoint.save_dir)
+        ),
+        azureml_logging=(
+            cfg.common.azureml_logging
+            if distributed_utils.is_master(cfg.distributed_training)
+            else False
+        ),
     )
+    progress_valid.update_config(_flatten_config(cfg))
 
+    progress_zip  = zip(progress, progress_valid)
 
-    valid_list=[]
-    # Get validation set to train calibration function
-    for j, samples_valid in enumerate(progress_valid):
-        valid_list.append(samples_valid)
+    for i, samples_zip in enumerate(progress_zip):
+        samples, samples_valid = samples_zip
 
-    for i, samples in enumerate(progress):
         with metrics.aggregate("train_inner"), torch.autograd.profiler.record_function(
             "train_step-%d" % i
         ):
-            log_output = trainer.train_step(samples, valid_list)
+            log_output = trainer.train_step(samples, samples_valid)
 
         if log_output is not None:  # not OOM, overflow, ...
             # log mid-epoch stats

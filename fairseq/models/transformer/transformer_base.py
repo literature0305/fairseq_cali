@@ -161,11 +161,7 @@ class TransformerModelBase(FairseqEncoderDecoderModel):
         which are not supported by TorchScript.
         """
 
-        if type_calibration is not None and ('wo_tf' in type_calibration or '_conf' in type_calibration) and (self.training or use_pseudo_conf):
-            ###### 1.0 turn off drop out, change b-norm mode
-            self.encoder.eval()
-            self.decoder.eval()
-
+        if type_calibration is not None and ('_conf' in type_calibration) and (self.training or use_pseudo_conf):
             ###### 2.0 inference
             encoder_out = self.encoder(
                 src_tokens, src_lengths=src_lengths, return_all_hiddens=return_all_hiddens
@@ -179,10 +175,6 @@ class TransformerModelBase(FairseqEncoderDecoderModel):
                 src_lengths=src_lengths,
                 return_all_hiddens=return_all_hiddens,
             ) # prev_output_tokens torch.Size([56, 69]),  # decoder_out torch.Size([56, 69, 6632])
-
-            ###### 3.0 turn on drop out again, change b-norm mode
-            self.encoder.train()
-            self.decoder.train()
 
             ###### 4.0 print option
             if torch.randperm(10000)[0] == 0:
@@ -239,15 +231,14 @@ class TransformerModelBase(FairseqEncoderDecoderModel):
                     print('conf wo teacher forcing:', conf)
         else:
             confidence=None
+        
         ###################################################################### do calibration ######################################################################
         # i: modules/transformer_layer.TransformerEncoderLayerBase
         for i in self.encoder.layers:
             i.turn_calibration_mode_encoder(type_calibration)
-            # i.set_confidence_encoder(confidence)
         for i in self.decoder.layers:
             i.turn_calibration_mode_decoder(type_calibration)
             i.set_confidence_decoder(confidence)
-            # i.turn_calibration_mode_decoder_enc_ref(type_calibration)            
         self.decoder.turn_calibration_mode_decoder_temp(type_calibration)
         self.decoder.set_confidence_decoder_temp(confidence)
         #############################################################################################################################################################

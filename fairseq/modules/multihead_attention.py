@@ -173,13 +173,9 @@ class MultiheadAttention(FairseqIncrementalDecoder):
         self.scaling_factor_for_ad_att_hidden_temp2 = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
         self.scaling_factor_for_mh_ad_att_hidden_temp1 = torch.nn.Parameter(torch.zeros(num_heads), requires_grad=True)
         self.scaling_factor_for_mh_ad_att_hidden_temp2 = torch.nn.Parameter(torch.zeros(num_heads), requires_grad=True)
-
-        self.scaling_factor_for_wo_tf_att_hidden_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
-        self.scaling_factor_for_wo_tf_mh_att_hidden_temp = torch.nn.Parameter(torch.zeros(num_heads), requires_grad=True)
-        self.scaling_factor_for_wo_tf_ad_att_hidden_temp1 = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
-        self.scaling_factor_for_wo_tf_ad_att_hidden_temp2 = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
-        self.scaling_factor_for_wo_tf_mh_ad_att_hidden_temp1 = torch.nn.Parameter(torch.zeros(num_heads), requires_grad=True)
-        self.scaling_factor_for_wo_tf_mh_ad_att_hidden_temp2 = torch.nn.Parameter(torch.zeros(num_heads), requires_grad=True)
+        self.scaling_factor_for_tau_att_hidden_temp1 = torch.nn.Parameter(torch.zeros(1), requires_grad=True) # Parameter(torch.Tensor(num_heads), requires_grad=False) # 
+        self.scaling_factor_for_tau_att_hidden_temp2 = torch.nn.Parameter(torch.zeros(1), requires_grad=True) # Parameter(torch.Tensor(num_heads), requires_grad=False) # 
+        
 
         if conf_calibration:
             self.scaling_factor_for_conf_att_hidden_temp1 = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
@@ -733,15 +729,32 @@ class MultiheadAttention(FairseqIncrementalDecoder):
                 k=k, v=v, key_padding_mask=key_padding_mask, attn_mask=attn_mask
             )
 
+        if self.calibration_mode == 'd_att_temp':
+            # print('q size:', q.size()) # q size: torch.Size([320, 42, 128])
+            q_new = q.view(bsz, self.num_heads,tgt_len, self.head_dim)
+            q_new = q_new.transpose(1,2)
+            q_new = q_new.view(bsz,tgt_len, self.head_dim * self.num_heads) * (1*self.scaling_factor_for_d_att_hidden_temp.unsqueeze(0).unsqueeze(0))
+            q_new = q_new.view(bsz,tgt_len, self.num_heads, self.head_dim).transpose(1,2)
+            q_new = q_new.view(bsz*self.num_heads, tgt_len, self.head_dim)
+        elif self.calibration_mode == 'd_plus_att_temp':
+            # print('q size:', q.size()) # q size: torch.Size([320, 42, 128])
+            q_new = q.view(bsz, self.num_heads,tgt_len, self.head_dim)
+            q_new = q_new.transpose(1,2)
+            q_new = q_new.view(bsz,tgt_len, self.head_dim * self.num_heads) * (1+self.scaling_factor_for_d_plus_att_hidden_temp.unsqueeze(0).unsqueeze(0))
+            q_new = q_new.view(bsz,tgt_len, self.num_heads, self.head_dim).transpose(1,2)
+            q_new = q_new.view(bsz*self.num_heads, tgt_len, self.head_dim)
+        else:
+            q_new = q
+
         if self.encoder_decoder_attention and bsz != kv_bsz:
             attn_weights = torch.einsum(
                 "bxhtd,bhsd->bxhts",
-                q.view((kv_bsz, -1, self.num_heads) + q.size()[1:]),
+                q_new.view((kv_bsz, -1, self.num_heads) + q.size()[1:]),
                 k.view((kv_bsz, self.num_heads) + k.size()[1:]),
             )
             attn_weights = attn_weights.reshape((-1,) + attn_weights.size()[-2:])
         else:
-            attn_weights = torch.bmm(q, k.transpose(1, 2))
+            attn_weights = torch.bmm(q_new, k.transpose(1, 2))
         attn_weights = self.apply_sparse_mask(attn_weights, tgt_len, src_len, bsz)
 
         assert list(attn_weights.size()) == [bsz * self.num_heads, tgt_len, src_len]
@@ -764,18 +777,24 @@ class MultiheadAttention(FairseqIncrementalDecoder):
         elif self.calibration_mode == 'mh_ad_att_temp':
             entropy_att_weight = (torch.softmax(attn_weights.detach(), dim=-1) * torch.log_softmax(attn_weights.detach(), dim=-1)).sum(-1).unsqueeze(-1) # B,H,T1,T2 -> B,H,T1,1
             attn_weights = attn_weights * (1+self.scaling_factor_for_mh_ad_att_hidden_temp1.view(1,self.num_heads,1,1) * self.lr_regularizer + entropy_att_weight * self.scaling_factor_for_mh_ad_att_hidden_temp2.view(1,self.num_heads,1,1) * self.lr_regularizer)
-
-        elif self.calibration_mode == 'att_temp_wo_tf':
-            attn_weights = attn_weights * (1 + self.scaling_factor_for_wo_tf_att_hidden_temp * self.lr_regularizer)
-        elif self.calibration_mode == 'mh_att_temp_wo_tf':
-            attn_weights = attn_weights * (1 + self.scaling_factor_for_wo_tf_mh_att_hidden_temp.view(1,self.num_heads,1,1) * self.lr_regularizer)
-        elif self.calibration_mode == 'ad_att_temp_wo_tf':
-            entropy_att_weight = (torch.softmax(attn_weights.detach(), dim=-1) * torch.log_softmax(attn_weights.detach(), dim=-1)).sum(-1).unsqueeze(-1) # B,H,T1,T2 -> B,H,T1,1
-            attn_weights = attn_weights * (1+self.scaling_factor_for_wo_tf_ad_att_hidden_temp1 * self.lr_regularizer + entropy_att_weight * self.scaling_factor_for_wo_tf_ad_att_hidden_temp2 * self.lr_regularizer)
-        elif self.calibration_mode == 'mh_ad_att_temp_wo_tf':
-            entropy_att_weight = (torch.softmax(attn_weights.detach(), dim=-1) * torch.log_softmax(attn_weights.detach(), dim=-1)).sum(-1).unsqueeze(-1) # B,H,T1,T2 -> B,H,T1,1
-            attn_weights = attn_weights * (1+self.scaling_factor_for_wo_tf_mh_ad_att_hidden_temp1.view(1,self.num_heads,1,1) * self.lr_regularizer + entropy_att_weight * self.scaling_factor_for_wo_tf_mh_ad_att_hidden_temp2.view(1,self.num_heads,1,1) * self.lr_regularizer)
-
+        elif self.calibration_mode == 'tau_att_temp':
+            if attn_mask is None:
+                k_len = torch.ones(q.size(1)).to(q.device).to(q.dtype) * k.size(1)
+            else:
+                k_len = (attn_mask == 0).sum(-1).detach()
+            k_len_before = k_len.clone().detach()
+            k_len = torch.pow(k_len, self.scaling_factor_for_tau_att_hidden_temp1) * (1+self.scaling_factor_for_tau_att_hidden_temp2)
+            attn_weights = attn_weights * (k_len).unsqueeze(-1).unsqueeze(0).unsqueeze(0)
+            if torch.randperm(5000)[0]==0:
+                print('k_len_before:', k_len_before)
+                print('k_len_after :', k_len)
+                print('k_len size:', k_len.size())
+                print('q size:', q.size())
+                print('k size:', k.size())
+                print('v size:', v.size())
+                print('attn_weights size:', attn_weights.size())
+                if attn_mask is not None:
+                    print('attn_mask size:', attn_mask.size())
         elif self.calibration_mode == 'att_temp_conf':
             if self.conf_calibration:
                 attn_weights = attn_weights * (1 + self.scaling_factor_for_conf_att_hidden_temp1 * self.lr_regularizer + self.scaling_factor_for_conf_att_hidden_temp2 * self.lr_regularizer * self.confidence) # for conf: B,T -> B,H,T,F

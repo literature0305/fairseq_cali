@@ -213,16 +213,7 @@ class SequenceGenerator(nn.Module):
         constraints: Optional[Tensor] = None,
         bos_token: Optional[int] = None,
     ):
-
         self.model.turn_calibration_mode(self.calibration_mode)
-
-        # raise ValueError('self.model:', self.model)
-        # for model_element in self.model:
-        #     for i in model_element.encoder.layers:
-        #         i.turn_calibration_mode_encoder(self.calibration_mode)
-        #     for i in model_element.decoder.layers:
-        #         i.turn_calibration_mode_decoder(self.calibration_mode)
-        #     model_element.decoder.turn_calibration_mode_decoder_temp(self.calibration_mode)
 
         incremental_states = torch.jit.annotate(
             List[Dict[str, Dict[str, Optional[Tensor]]]],

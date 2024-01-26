@@ -777,7 +777,7 @@ class Trainer(object):
         self._dummy_batch = batch
 
     @metrics.aggregate("train")
-    def train_step(self, samples, valid_list, raise_oom=False):
+    def train_step(self, samples, sample_valid, raise_oom=False):
         """Do forward, backward and parameter update."""
         self._set_seed()
         self.model.train()
@@ -796,8 +796,7 @@ class Trainer(object):
         # forward and backward pass
         logging_outputs, sample_size, ooms = [], 0, 0
         for i, sample in enumerate(samples):  # delayed update loop
-            valid_rand_num = torch.randperm(len(valid_list))[0]
-            sample_valid = valid_list[valid_rand_num]
+            sample, is_dummy_batch = self._prepare_sample(sample)
             sample_valid, is_dummy_batch_valid = self._prepare_sample(sample_valid)
 
             sample, is_dummy_batch = self._prepare_sample(sample)

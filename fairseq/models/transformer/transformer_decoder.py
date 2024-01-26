@@ -143,16 +143,15 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
         ############################################# set calibration function #############################################
         ####################################################################################################################
         self.scaling_factor_for_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
+        self.scaling_factor_for_tau_temp1 = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
+        self.scaling_factor_for_tau_temp2 = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
         self.scaling_factor_for_att_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
         self.scaling_factor_for_mh_att_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
+        self.scaling_factor_for_d_att_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
+        self.scaling_factor_for_d_plus_att_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
         self.scaling_factor_for_ad_att_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
         self.scaling_factor_for_mh_ad_att_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
-
-        self.scaling_factor_for_wo_tf_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
-        self.scaling_factor_for_wo_tf_att_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
-        self.scaling_factor_for_wo_tf_mh_att_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
-        self.scaling_factor_for_wo_tf_ad_att_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
-        self.scaling_factor_for_wo_tf_mh_ad_att_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
+        self.scaling_factor_for_tau_att_temp = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
 
         self.scaling_factor_for_conf_temp1 = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
         self.scaling_factor_for_conf_att_temp1 = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
@@ -263,25 +262,24 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
 
         if self.calibration_mode == 'temperature':
             x = x * (1 + self.scaling_factor_for_temp)
+        if self.calibration_mode == 'tau_temperature':
+            k_len = torch.arange(1, x.size(1)+1).to(x.device).to(x.dtype)
+            k_len = torch.pow(k_len, -abs(self.scaling_factor_for_tau_temp1)) + self.scaling_factor_for_tau_temp2
+            x = x * k_len.unsqueeze(0).unsqueeze(-1)
         elif self.calibration_mode == 'att_temp':
             x = x * (1 + self.scaling_factor_for_att_temp)
         elif self.calibration_mode == 'mh_att_temp':
             x = x * (1 + self.scaling_factor_for_mh_att_temp)
+        if self.calibration_mode == 'd_att_temp':
+            x = x * (1 + self.scaling_factor_for_d_att_temp)
+        if self.calibration_mode == 'd_plus_att_temp':
+            x = x * (1 + self.scaling_factor_for_d_plus_att_temp)
         elif self.calibration_mode == 'ad_att_temp':
             x = x * (1 + self.scaling_factor_for_ad_att_temp)
         elif self.calibration_mode == 'mh_ad_att_temp':
             x = x * (1 + self.scaling_factor_for_mh_ad_att_temp)
-
-        elif self.calibration_mode == 'temperature_wo_tf':
-            x = x * (1 + self.scaling_factor_for_wo_tf_temp)
-        elif self.calibration_mode == 'att_temp_wo_tf':
-            x = x * (1 + self.scaling_factor_for_wo_tf_att_temp)
-        elif self.calibration_mode == 'mh_att_temp_wo_tf':
-            x = x * (1 + self.scaling_factor_for_wo_tf_mh_att_temp)
-        elif self.calibration_mode == 'ad_att_temp_wo_tf':
-            x = x * (1 + self.scaling_factor_for_wo_tf_ad_att_temp)
-        elif self.calibration_mode == 'mh_ad_att_temp_wo_tf':
-            x = x * (1 + self.scaling_factor_for_wo_tf_mh_ad_att_temp)
+        if self.calibration_mode == 'tau_att_temp':
+            x = x * (1 + self.scaling_factor_for_tau_att_temp)
 
         elif self.calibration_mode == 'temperature_conf':
             x = x * (1 + self.scaling_factor_for_conf_temp1 + self.confidence.unsqueeze(-1)*self.scaling_factor_for_conf_temp2)

@@ -69,10 +69,7 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         self.ignore_prefix_size = ignore_prefix_size
         self.report_accuracy = report_accuracy
 
-    def forward(self, model, sample, optimizer=None, sample_valid=None, stage_validation=False, reduce=True, update_num=None):
-        update_num_threshold_for_calibration_func_training=-1 #30000
-        if update_num is None:
-            update_num = update_num_threshold_for_calibration_func_training + 1
+    def forward(self, model, sample, optimizer=None, sample_valid=None, stage_validation=False, reduce=True):
 
         if stage_validation:
             # validation stage
@@ -94,218 +91,79 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
                 logging_output["n_correct"] = utils.item(n_correct.data)
                 logging_output["total"] = utils.item(total.data)
 
-            if update_num > update_num_threshold_for_calibration_func_training:
+            if torch.randperm(50)[0] == 0:
                 ####################### with temperature-scaling #######################
                 type_calibration='temperature'
                 net_output_valid_temp = model(**sample["net_input"], type_calibration=type_calibration)
                 loss_valid_temp, nll_loss_valid_temp = self.compute_loss(model, net_output_valid_temp, sample, reduce=reduce)
-                
-                logging_output["loss_valid_temp"] = loss_valid_temp.data
-                logging_output["nll_loss_valid_temp"] = nll_loss_valid_temp.data
 
-                if self.report_accuracy:
-                    n_correct_valid_temp, total_valid_temp = self.compute_accuracy(model, net_output_valid_temp, sample)
-                    logging_output["n_correct_temp"] = utils.item(n_correct_valid_temp.data)
-                    logging_output["total_temp"] = utils.item(total_valid_temp.data)
+                ####################### with temperature-tau-scaling #######################
+                type_calibration='tau_temperature'
+                net_output_valid_tau_temp = model(**sample["net_input"], type_calibration=type_calibration)
+                loss_valid_tau_temp, nll_loss_valid_tau_temp = self.compute_loss(model, net_output_valid_tau_temp, sample, reduce=reduce)
 
                 ####################### with att-calibration #######################
                 type_calibration='att_temp'
                 net_output_valid_att = model(**sample["net_input"], type_calibration=type_calibration)
                 loss_valid_att, nll_loss_valid_att = self.compute_loss(model, net_output_valid_att, sample, reduce=reduce)
-                
-                logging_output["loss_valid_att"] = loss_valid_att.data
-                logging_output["nll_loss_valid_att"] = nll_loss_valid_att.data
-
-                if self.report_accuracy:
-                    n_correct_valid_att, total_valid_att = self.compute_accuracy(model, net_output_valid_att, sample)
-                    logging_output["n_correct_att"] = utils.item(n_correct_valid_att.data)
-                    logging_output["total_att"] = utils.item(total_valid_att.data)
 
                 ####################### with mh-att-calibration #######################
                 type_calibration='mh_att_temp'
                 net_output_valid_mh_att = model(**sample["net_input"], type_calibration=type_calibration)
                 loss_valid_mh_att, nll_loss_valid_mh_att = self.compute_loss(model, net_output_valid_mh_att, sample, reduce=reduce)
-                
-                logging_output["loss_valid_mh_att"] = loss_valid_mh_att.data
-                logging_output["nll_loss_valid_mh_att"] = nll_loss_valid_mh_att.data
 
-                if self.report_accuracy:
-                    n_correct_valid_mh_att, total_valid_mh_att = self.compute_accuracy(model, net_output_valid_mh_att, sample)
-                    logging_output["n_correct_mh_att"] = utils.item(n_correct_valid_mh_att.data)
-                    logging_output["total_mh_att"] = utils.item(total_valid_mh_att.data)
+                ####################### with d-att-calibration #######################
+                type_calibration='d_att_temp'
+                net_output_valid_d_att = model(**sample["net_input"], type_calibration=type_calibration)
+                loss_valid_d_att, nll_loss_valid_d_att = self.compute_loss(model, net_output_valid_d_att, sample, reduce=reduce)
+
+                ####################### with d-att-calibration #######################
+                type_calibration='d_plus_att_temp'
+                net_output_valid_d_plus_att = model(**sample["net_input"], type_calibration=type_calibration)
+                loss_valid_d_plus_att, nll_loss_valid_d_plus_att = self.compute_loss(model, net_output_valid_d_plus_att, sample, reduce=reduce)
 
                 ####################### with adaptive att-calibration #######################
                 type_calibration='ad_att_temp'
                 net_output_valid_ad_att = model(**sample["net_input"], type_calibration=type_calibration)
                 loss_valid_ad_att, nll_loss_valid_ad_att = self.compute_loss(model, net_output_valid_ad_att, sample, reduce=reduce)
-                
-                logging_output["loss_valid_ad_att"] = loss_valid_ad_att.data
-                logging_output["nll_loss_valid_ad_att"] = nll_loss_valid_ad_att.data
-
-                if self.report_accuracy:
-                    n_correct_valid_ad_att, total_valid_ad_att = self.compute_accuracy(model, net_output_valid_ad_att, sample)
-                    logging_output["n_correct_ad_att"] = utils.item(n_correct_valid_ad_att.data)
-                    logging_output["total_ad_att"] = utils.item(total_valid_ad_att.data)
 
                 ####################### with multi head adaptive att-calibration #######################
                 type_calibration='mh_ad_att_temp'
                 net_output_valid_mh_ad_att = model(**sample["net_input"], type_calibration=type_calibration)
                 loss_valid_mh_ad_att, nll_loss_valid_mh_ad_att = self.compute_loss(model, net_output_valid_mh_ad_att, sample, reduce=reduce)
-                
-                logging_output["loss_valid_mh_ad_att"] = loss_valid_mh_ad_att.data
-                logging_output["nll_loss_valid_mh_ad_att"] = nll_loss_valid_mh_ad_att.data
-
-                if self.report_accuracy:
-                    n_correct_valid_mh_ad_att, total_valid_mh_ad_att = self.compute_accuracy(model, net_output_valid_mh_ad_att, sample)
-                    logging_output["n_correct_mh_ad_att"] = utils.item(n_correct_valid_mh_ad_att.data)
-                    logging_output["total_mh_ad_att"] = utils.item(total_valid_mh_ad_att.data)
-
-                ####################### without calibration wo teacher forcing #######################
-                type_calibration='None_wo_tf'
-                net_output_valid_wo_tf = model(**sample["net_input"], type_calibration=type_calibration)
-                loss_valid_wo_tf, nll_loss_valid_wo_tf = self.compute_loss(model, net_output_valid_wo_tf, sample, reduce=reduce)
-                
-                logging_output["loss_valid_wo_tf"] = loss_valid_wo_tf.data
-                logging_output["nll_loss_valid_wo_tf"] = nll_loss_valid_wo_tf.data
-
-                if self.report_accuracy:
-                    n_correct_valid_wo_tf, total_valid_wo_tf = self.compute_accuracy(model, net_output_valid_wo_tf, sample)
-                    logging_output["n_correct_wo_tf"] = utils.item(n_correct_valid_wo_tf.data)
-                    logging_output["total_wo_tf"] = utils.item(total_valid_wo_tf.data)
-
-                ####################### with temperature scaling wo teacher forcing #######################
-                type_calibration='temperature_wo_tf'
-                net_output_valid_wo_tf_temperature = model(**sample["net_input"], type_calibration=type_calibration)
-                loss_valid_wo_tf_temp, nll_loss_valid_wo_tf_temp = self.compute_loss(model, net_output_valid_wo_tf_temperature, sample, reduce=reduce)
-                
-                logging_output["loss_valid_wo_tf_temp"] = loss_valid_wo_tf_temp.data
-                logging_output["nll_loss_valid_wo_tf_temp"] = nll_loss_valid_wo_tf_temp.data
-
-                if self.report_accuracy:
-                    n_correct_valid_wo_tf_temp, total_valid_wo_tf_temp = self.compute_accuracy(model, net_output_valid_wo_tf_temperature, sample)
-                    logging_output["n_correct_wo_tf_temp"] = utils.item(n_correct_valid_wo_tf_temp.data)
-                    logging_output["total_wo_tf_temp"] = utils.item(total_valid_wo_tf_temp.data)
-
-                ####################### with att-temperature scaling wo teacher forcing #######################
-                type_calibration='att_temp_wo_tf'
-                net_output_valid_wo_tf_att_temp = model(**sample["net_input"], type_calibration=type_calibration)
-                loss_valid_wo_tf_att_temp, nll_loss_valid_wo_tf_att_temp = self.compute_loss(model, net_output_valid_wo_tf_att_temp, sample, reduce=reduce)
-                
-                logging_output["loss_valid_wo_tf_att_temp"] = loss_valid_wo_tf_att_temp.data
-                logging_output["nll_loss_valid_wo_tf_att_temp"] = nll_loss_valid_wo_tf_att_temp.data
-
-                if self.report_accuracy:
-                    n_correct_valid_wo_tf_att_temp, total_valid_wo_tf_att_temp = self.compute_accuracy(model, net_output_valid_wo_tf_att_temp, sample)
-                    logging_output["n_correct_wo_tf_att_temp"] = utils.item(n_correct_valid_wo_tf_att_temp.data)
-                    logging_output["total_wo_tf_att_temp"] = utils.item(total_valid_wo_tf_att_temp.data)
-
-                ####################### with mh-att-temperature scaling wo teacher forcing #######################
-                type_calibration='mh_att_temp_wo_tf'
-                net_output_valid_wo_tf_mh_att_temp = model(**sample["net_input"], type_calibration=type_calibration)
-                loss_valid_wo_tf_mh_att_temp, nll_loss_valid_wo_tf_mh_att_temp = self.compute_loss(model, net_output_valid_wo_tf_mh_att_temp, sample, reduce=reduce)
-                
-                logging_output["loss_valid_wo_tf_mh_att_temp"] = loss_valid_wo_tf_mh_att_temp.data
-                logging_output["nll_loss_valid_wo_tf_mh_att_temp"] = nll_loss_valid_wo_tf_mh_att_temp.data
-
-                if self.report_accuracy:
-                    n_correct_valid_wo_tf_mh_att_temp, total_valid_wo_tf_mh_att_temp = self.compute_accuracy(model, net_output_valid_wo_tf_mh_att_temp, sample)
-                    logging_output["n_correct_wo_tf_mh_att_temp"] = utils.item(n_correct_valid_wo_tf_mh_att_temp.data)
-                    logging_output["total_wo_tf_mh_att_temp"] = utils.item(total_valid_wo_tf_mh_att_temp.data)
-
-                ####################### with ad-att-temperature scaling wo teacher forcing #######################
-                type_calibration='ad_att_temp_wo_tf'
-                net_output_valid_wo_tf_ad_att_temp = model(**sample["net_input"], type_calibration=type_calibration)
-                loss_valid_wo_tf_ad_att_temp, nll_loss_valid_wo_tf_ad_att_temp = self.compute_loss(model, net_output_valid_wo_tf_ad_att_temp, sample, reduce=reduce)
-                
-                logging_output["loss_valid_wo_tf_ad_att_temp"] = loss_valid_wo_tf_ad_att_temp.data
-                logging_output["nll_loss_valid_wo_tf_ad_att_temp"] = nll_loss_valid_wo_tf_ad_att_temp.data
-
-                if self.report_accuracy:
-                    n_correct_valid_wo_tf_ad_att_temp, total_valid_wo_tf_ad_att_temp = self.compute_accuracy(model, net_output_valid_wo_tf_ad_att_temp, sample)
-                    logging_output["n_correct_wo_tf_ad_att_temp"] = utils.item(n_correct_valid_wo_tf_ad_att_temp.data)
-                    logging_output["total_wo_tf_ad_att_temp"] = utils.item(total_valid_wo_tf_ad_att_temp.data)
-
-                ####################### with mh-ad-att-temperature scaling wo teacher forcing #######################
-                type_calibration='mh_ad_att_temp_wo_tf'
-                net_output_valid_wo_tf_mh_ad_att_temp = model(**sample["net_input"], type_calibration=type_calibration)
-                loss_valid_wo_tf_mh_ad_att_temp, nll_loss_valid_wo_tf_mh_ad_att_temp = self.compute_loss(model, net_output_valid_wo_tf_mh_ad_att_temp, sample, reduce=reduce)
-                
-                logging_output["loss_valid_wo_tf_mh_ad_att_temp"] = loss_valid_wo_tf_mh_ad_att_temp.data
-                logging_output["nll_loss_valid_wo_tf_mh_ad_att_temp"] = nll_loss_valid_wo_tf_mh_ad_att_temp.data
-
-                if self.report_accuracy:
-                    n_correct_valid_wo_tf_mh_ad_att_temp, total_valid_wo_tf_mh_ad_att_temp = self.compute_accuracy(model, net_output_valid_wo_tf_mh_ad_att_temp, sample)
-                    logging_output["n_correct_wo_tf_mh_ad_att_temp"] = utils.item(n_correct_valid_wo_tf_mh_ad_att_temp.data)
-                    logging_output["total_wo_tf_mh_ad_att_temp"] = utils.item(total_valid_wo_tf_mh_ad_att_temp.data)
 
                 ####################### with temperature scaling with conf #######################
                 type_calibration='temperature_conf'
                 net_output_valid_conf_temp = model(**sample["net_input"], type_calibration=type_calibration, use_pseudo_conf=True)
                 loss_valid_conf_temp, nll_loss_valid_conf_temp = self.compute_loss(model, net_output_valid_conf_temp, sample, reduce=reduce)
-                
-                logging_output["loss_valid_conf_temp"] = loss_valid_conf_temp.data
-                logging_output["nll_loss_valid_conf_temp"] = nll_loss_valid_conf_temp.data
-
-                if self.report_accuracy:
-                    n_correct_valid_conf_temp, total_valid_conf_temp = self.compute_accuracy(model, net_output_valid_conf_temp, sample)
-                    logging_output["n_correct_conf_temp"] = utils.item(n_correct_valid_conf_temp.data)
-                    logging_output["total_conf_temp"] = utils.item(total_valid_conf_temp.data)
 
                 ####################### with att-temperature scaling with conf #######################
                 type_calibration='att_temp_conf'
                 net_output_valid_conf_att_temp = model(**sample["net_input"], type_calibration=type_calibration, use_pseudo_conf=True)
                 loss_valid_conf_att_temp, nll_loss_valid_conf_att_temp = self.compute_loss(model, net_output_valid_conf_att_temp, sample, reduce=reduce)
-                
-                logging_output["loss_valid_conf_att_temp"] = loss_valid_conf_att_temp.data
-                logging_output["nll_loss_valid_conf_att_temp"] = nll_loss_valid_conf_att_temp.data
-
-                if self.report_accuracy:
-                    n_correct_valid_conf_att_temp, total_valid_conf_att_temp = self.compute_accuracy(model, net_output_valid_conf_att_temp, sample)
-                    logging_output["n_correct_conf_att_temp"] = utils.item(n_correct_valid_conf_att_temp.data)
-                    logging_output["total_conf_att_temp"] = utils.item(total_valid_conf_att_temp.data)
 
                 ####################### with att-temperature scaling with conf #######################
                 type_calibration='mh_att_temp_conf'
                 net_output_valid_conf_mh_att_temp = model(**sample["net_input"], type_calibration=type_calibration, use_pseudo_conf=True)
                 loss_valid_conf_mh_att_temp, nll_loss_valid_conf_mh_att_temp = self.compute_loss(model, net_output_valid_conf_mh_att_temp, sample, reduce=reduce)
-                
-                logging_output["loss_valid_conf_mh_att_temp"] = loss_valid_conf_mh_att_temp.data
-                logging_output["nll_loss_valid_conf_mh_att_temp"] = nll_loss_valid_conf_mh_att_temp.data
-
-                if self.report_accuracy:
-                    n_correct_valid_conf_mh_att_temp, total_valid_conf_mh_att_temp = self.compute_accuracy(model, net_output_valid_conf_mh_att_temp, sample)
-                    logging_output["n_correct_conf_mh_att_temp"] = utils.item(n_correct_valid_conf_mh_att_temp.data)
-                    logging_output["total_conf_mh_att_temp"] = utils.item(total_valid_conf_mh_att_temp.data)
 
                 ####################### with att-temperature scaling with conf #######################
                 type_calibration='ad_att_temp_conf'
                 net_output_valid_conf_ad_att_temp = model(**sample["net_input"], type_calibration=type_calibration, use_pseudo_conf=True)
                 loss_valid_conf_ad_att_temp, nll_loss_valid_conf_ad_att_temp = self.compute_loss(model, net_output_valid_conf_ad_att_temp, sample, reduce=reduce)
-                
-                logging_output["loss_valid_conf_ad_att_temp"] = loss_valid_conf_ad_att_temp.data
-                logging_output["nll_loss_valid_conf_ad_att_temp"] = nll_loss_valid_conf_ad_att_temp.data
-
-                if self.report_accuracy:
-                    n_correct_valid_conf_ad_att_temp, total_valid_conf_ad_att_temp = self.compute_accuracy(model, net_output_valid_conf_ad_att_temp, sample)
-                    logging_output["n_correct_conf_ad_att_temp"] = utils.item(n_correct_valid_conf_ad_att_temp.data)
-                    logging_output["total_conf_ad_att_temp"] = utils.item(total_valid_conf_ad_att_temp.data)
 
                 ####################### with att-temperature scaling with conf #######################
                 type_calibration='mh_ad_att_temp_conf'
                 net_output_valid_conf_mh_ad_att__temp = model(**sample["net_input"], type_calibration=type_calibration, use_pseudo_conf=True)
                 loss_valid_conf_mh_ad_att_temp, nll_loss_valid_conf_mh_ad_att_temp = self.compute_loss(model, net_output_valid_conf_mh_ad_att__temp, sample, reduce=reduce)
-                
-                logging_output["loss_valid_conf_mh_ad_att_temp"] = loss_valid_conf_mh_ad_att_temp.data
-                logging_output["nll_loss_valid_conf_mh_ad_att_temp"] = nll_loss_valid_conf_mh_ad_att_temp.data
 
-                if self.report_accuracy:
-                    n_correct_valid_conf_mh_ad_att__temp, total_valid_conf_mh_ad_att__temp = self.compute_accuracy(model, net_output_valid_conf_mh_ad_att__temp, sample)
-                    logging_output["n_correct_conf_mh_ad_att__temp"] = utils.item(n_correct_valid_conf_mh_ad_att__temp.data)
-                    logging_output["total_conf_mh_ad_att__temp"] = utils.item(total_valid_conf_mh_ad_att__temp.data)
+                ####################### with tau att-calibration #######################
+                type_calibration='tau_att_temp'
+                net_output_valid_tau_att = model(**sample["net_input"], type_calibration=type_calibration)
+                loss_valid_tau_att, nll_loss_valid_tau_att = self.compute_loss(model, net_output_valid_tau_att, sample, reduce=reduce)
 
                 if torch.randperm(300)[0] == 0:
-                    print('loss_valid_none:', loss, 'loss_valid_temp:', loss_valid_temp,'loss_valid_att:', loss_valid_att, 'loss_valid_mh_att:', loss_valid_mh_att, 'loss_valid_ad_att:', loss_valid_ad_att, 'loss_valid_mh_ad_att', loss_valid_mh_ad_att)
-                    print('loss_valid_none_wo_tf:', loss_valid_wo_tf, 'loss_valid_temp_wo_tf:', loss_valid_wo_tf_temp,'loss_valid_att_wo_tf:', loss_valid_wo_tf_att_temp, 'loss_valid_mh_att_wo_tf:', loss_valid_wo_tf_mh_att_temp, 'loss_valid_ad_att_wo_tf:', loss_valid_wo_tf_ad_att_temp, 'loss_valid_mh_ad_att_wo_tf', loss_valid_wo_tf_mh_ad_att_temp)
+                    print('loss_valid_none:', loss, 'loss_valid_temp:', loss_valid_temp,'loss_valid_tau_temp:', loss_valid_tau_temp, 'loss_valid_att:', loss_valid_att, 'loss_valid_mh_att:', loss_valid_mh_att, 'loss_valid_d_att:', loss_valid_d_att, 'loss_valid_d_plus_att:', loss_valid_d_plus_att, 'loss_valid_ad_att:', loss_valid_ad_att, 'loss_valid_mh_ad_att', loss_valid_mh_ad_att, 'loss_valid_tau_att:', loss_valid_tau_att)
                     print('loss_valid_conf_temp:', loss_valid_conf_temp,'loss_valid_conf_att_temp:', loss_valid_conf_att_temp, 'loss_valid_conf_mh_att_temp:', loss_valid_conf_mh_att_temp, 'loss_valid_conf_ad_att_temp:', loss_valid_conf_ad_att_temp, 'loss_valid_conf_mh_ad_att_temp', loss_valid_conf_mh_ad_att_temp)
             return loss, sample_size, logging_output
         else:
@@ -338,7 +196,8 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
                 with torch.autograd.profiler.record_function("backward"):
                     optimizer.backward(loss)
 
-            if sample_valid is not None and update_num > update_num_threshold_for_calibration_func_training:
+            if sample_valid is not None:
+                model.eval()
                 type_calibration = 'temperature'
                 ######################## stop gradient descent for encoder & decoder ########################
                 for name, param in model.named_parameters(): 
@@ -354,6 +213,20 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
                 if optimizer is not None:
                     with torch.autograd.profiler.record_function("backward"):
                         optimizer.backward(loss_valid_temp)
+
+                type_calibration = 'tau_temperature'
+                ######################## stop gradient descent for encoder & decoder ########################
+                for name, param in model.named_parameters(): 
+                    if 'scaling_factor_for_tau_temp' in name:
+                        param.requires_grad=True
+                    else:
+                        param.requires_grad=False
+                ######################## stop gradient descent for encoder & decoder ########################
+                net_output_valid_tau_temp = model(**sample_valid["net_input"], type_calibration=type_calibration, scheduled_sampling=self.scheduled_sampling_cali)
+                loss_valid_tau_temp, nll_loss_valid_tau_temp = self.compute_loss(model, net_output_valid_tau_temp, sample_valid, reduce=reduce)
+                if optimizer is not None:
+                    with torch.autograd.profiler.record_function("backward"):
+                        optimizer.backward(loss_valid_tau_temp)
 
                 type_calibration = 'att_temp'
                 ######################## stop gradient descent for encoder & decoder ########################
@@ -373,6 +246,23 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
                     with torch.autograd.profiler.record_function("backward"):
                         optimizer.backward(loss_valid_att)
 
+                type_calibration = 'tau_att_temp'
+                ######################## stop gradient descent for encoder & decoder ########################
+                for name, param in model.named_parameters(): 
+                    if 'scaling_factor_for_tau_att' in name:
+                        param.requires_grad=True
+                    else:
+                        param.requires_grad=False
+                    if 'encoder_attn.scaling_factor_for' in name:
+                        param.requires_grad=False
+                ######################## stop gradient descent for encoder & decoder ########################
+                net_output_valid_tau_att = model(**sample_valid["net_input"], type_calibration=type_calibration, scheduled_sampling=self.scheduled_sampling_cali, update_num=update_num)
+                loss_valid_tau_att, nll_loss_valid_tau_att = self.compute_loss(model, net_output_valid_tau_att, sample_valid, reduce=reduce)
+
+                if optimizer is not None:
+                    with torch.autograd.profiler.record_function("backward"):
+                        optimizer.backward(loss_valid_tau_att)
+
                 type_calibration = 'mh_att_temp'
                 ######################## stop gradient descent for encoder & decoder ########################
                 for name, param in model.named_parameters(): 
@@ -391,6 +281,40 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
                 if optimizer is not None:
                     with torch.autograd.profiler.record_function("backward"):
                         optimizer.backward(loss_valid_mh_att)
+
+                type_calibration = 'd_att_temp'
+                ######################## stop gradient descent for encoder & decoder ########################
+                for name, param in model.named_parameters(): 
+                    if 'scaling_factor_for_d_att' in name:
+                        param.requires_grad=True
+                    else:
+                        param.requires_grad=False
+                    if 'encoder_attn.scaling_factor_for' in name:
+                        param.requires_grad=False
+                ######################## stop gradient descent for encoder & decoder ########################
+                net_output_valid_d_att = model(**sample_valid["net_input"], type_calibration=type_calibration, scheduled_sampling=self.scheduled_sampling_cali, update_num=update_num)
+                loss_valid_d_att, nll_loss_valid_d_att = self.compute_loss(model, net_output_valid_d_att, sample_valid, reduce=reduce)
+
+                if optimizer is not None:
+                    with torch.autograd.profiler.record_function("backward"):
+                        optimizer.backward(loss_valid_d_att)
+
+                type_calibration = 'd_plus_att_temp'
+                ######################## stop gradient descent for encoder & decoder ########################
+                for name, param in model.named_parameters(): 
+                    if 'scaling_factor_for_d_plus_att' in name:
+                        param.requires_grad=True
+                    else:
+                        param.requires_grad=False
+                    if 'encoder_attn.scaling_factor_for' in name:
+                        param.requires_grad=False
+                ######################## stop gradient descent for encoder & decoder ########################
+                net_output_valid_d_plus_att = model(**sample_valid["net_input"], type_calibration=type_calibration, scheduled_sampling=self.scheduled_sampling_cali, update_num=update_num)
+                loss_valid_d_plus_att, nll_loss_valid_d_plus_att = self.compute_loss(model, net_output_valid_d_plus_att, sample_valid, reduce=reduce)
+
+                if optimizer is not None:
+                    with torch.autograd.profiler.record_function("backward"):
+                        optimizer.backward(loss_valid_d_plus_att)
 
                 type_calibration = 'ad_att_temp'
                 ######################## stop gradient descent for encoder & decoder ########################
@@ -429,101 +353,6 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
                 if optimizer is not None:
                     with torch.autograd.profiler.record_function("backward"):
                         optimizer.backward(loss_valid_mh_ad_att)
-
-                type_calibration = 'temperature_wo_tf'
-                ######################## stop gradient descent for encoder & decoder ########################
-                for name, param in model.named_parameters(): 
-                    # print('name:', name)
-                    if 'scaling_factor_for_wo_tf_temp' in name:
-                        param.requires_grad=True
-                    else:
-                        param.requires_grad=False
-                    if 'encoder_attn.scaling_factor_for' in name:
-                        param.requires_grad=False
-                ######################## stop gradient descent for encoder & decoder ########################
-                # for validation set
-                net_output_valid_temp_wo_tf = model(**sample_valid["net_input"], type_calibration=type_calibration)
-                loss_valid_temp_wo_tf, _ = self.compute_loss(model, net_output_valid_temp_wo_tf, sample_valid, reduce=reduce)
-
-                if optimizer is not None:
-                    with torch.autograd.profiler.record_function("backward"):
-                        optimizer.backward(loss_valid_temp_wo_tf)
-
-                type_calibration = 'att_temp_wo_tf'
-                ######################## stop gradient descent for encoder & decoder ########################
-                for name, param in model.named_parameters(): 
-                    # print('name:', name)
-                    if 'scaling_factor_for_wo_tf_att' in name:
-                        param.requires_grad=True
-                    else:
-                        param.requires_grad=False
-                    if 'encoder_attn.scaling_factor_for' in name:
-                        param.requires_grad=False
-                ######################## stop gradient descent for encoder & decoder ########################
-                # for validation set
-                net_output_valid_att_temp_wo_tf = model(**sample_valid["net_input"], type_calibration=type_calibration)
-                loss_valid_att_temp_wo_tf, _ = self.compute_loss(model, net_output_valid_att_temp_wo_tf, sample_valid, reduce=reduce)
-
-                if optimizer is not None:
-                    with torch.autograd.profiler.record_function("backward"):
-                        optimizer.backward(loss_valid_att_temp_wo_tf)
-
-                type_calibration = 'mh_att_temp_wo_tf'
-                ######################## stop gradient descent for encoder & decoder ########################
-                for name, param in model.named_parameters(): 
-                    # print('name:', name)
-                    if 'scaling_factor_for_wo_tf_mh_att' in name:
-                        param.requires_grad=True
-                    else:
-                        param.requires_grad=False
-                    if 'encoder_attn.scaling_factor_for' in name:
-                        param.requires_grad=False
-                ######################## stop gradient descent for encoder & decoder ########################
-                # for validation set
-                net_output_valid_mh_att_temp_wo_tf = model(**sample_valid["net_input"], type_calibration=type_calibration)
-                loss_valid_mh_att_temp_wo_tf, _ = self.compute_loss(model, net_output_valid_mh_att_temp_wo_tf, sample_valid, reduce=reduce)
-
-                if optimizer is not None:
-                    with torch.autograd.profiler.record_function("backward"):
-                        optimizer.backward(loss_valid_mh_att_temp_wo_tf)
-
-                type_calibration = 'ad_att_temp_wo_tf'
-                ######################## stop gradient descent for encoder & decoder ########################
-                for name, param in model.named_parameters(): 
-                    # print('name:', name)
-                    if 'scaling_factor_for_wo_tf_ad_att' in name:
-                        param.requires_grad=True
-                    else:
-                        param.requires_grad=False
-                    if 'encoder_attn.scaling_factor_for' in name:
-                        param.requires_grad=False
-                ######################## stop gradient descent for encoder & decoder ########################
-                # for validation set
-                net_output_valid_ad_att_temp_wo_tf = model(**sample_valid["net_input"], type_calibration=type_calibration)
-                loss_valid_ad_att_temp_wo_tf, _ = self.compute_loss(model, net_output_valid_ad_att_temp_wo_tf, sample_valid, reduce=reduce)
-
-                if optimizer is not None:
-                    with torch.autograd.profiler.record_function("backward"):
-                        optimizer.backward(loss_valid_ad_att_temp_wo_tf)
-
-                type_calibration = 'mh_ad_att_temp_wo_tf'
-                ######################## stop gradient descent for encoder & decoder ########################
-                for name, param in model.named_parameters(): 
-                    # print('name:', name)
-                    if 'scaling_factor_for_wo_tf_mh_ad_att' in name:
-                        param.requires_grad=True
-                    else:
-                        param.requires_grad=False
-                    if 'encoder_attn.scaling_factor_for' in name:
-                        param.requires_grad=False
-                ######################## stop gradient descent for encoder & decoder ########################
-                # for validation set
-                net_output_valid_mh_ad_att_temp_wo_tf = model(**sample_valid["net_input"], type_calibration=type_calibration)
-                loss_valid_mh_ad_att_temp_wo_tf, _ = self.compute_loss(model, net_output_valid_mh_ad_att_temp_wo_tf, sample_valid, reduce=reduce)
-
-                if optimizer is not None:
-                    with torch.autograd.profiler.record_function("backward"):
-                        optimizer.backward(loss_valid_mh_ad_att_temp_wo_tf)
 
                 type_calibration = 'temperature_conf'
                 ######################## stop gradient descent for encoder & decoder ########################
@@ -622,8 +451,7 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
 
                 ### print ###
                 if torch.randperm(5000)[0] == 0:
-                    print('(training) loss:', loss, 'loss_temp:', loss_valid_temp, 'loss_att:', loss_valid_att, 'loss_mh-att:', loss_valid_mh_att, 'loss_ad-att', loss_valid_ad_att, 'loss_mh-ad-att', loss_valid_mh_ad_att)
-                    print('(training) loss_valid_temp_wo_tf:', loss_valid_temp_wo_tf, 'loss_valid_att-temp_wo_tf:', loss_valid_att_temp_wo_tf, 'loss_valid_mh-att_temp_wo_tf', loss_valid_mh_att_temp_wo_tf, 'loss_valid_ad_att_temp_wo_tf', loss_valid_ad_att_temp_wo_tf, 'loss_valid_mh_ad_att_temp_wo_tf', loss_valid_mh_ad_att_temp_wo_tf)
+                    print('(training) loss:', loss, 'loss_temp:', loss_valid_temp, 'loss_att:', loss_valid_att, 'loss_mh-att:', loss_valid_mh_att, 'loss_valid_d_att:', loss_valid_d_att, 'loss_valid_d_plus_att:', loss_valid_d_plus_att, 'loss_ad-att', loss_valid_ad_att, 'loss_mh-ad-att', loss_valid_mh_ad_att, 'loss_valid_tau_att:', loss_valid_tau_att)
                     print('(training) loss_valid_temp_conf:', loss_valid_temp_conf, 'loss_valid_att_temp_conf:', loss_valid_att_temp_conf, 'loss_valid_mh_att_temp_conf', loss_valid_mh_att_temp_conf, 'loss_valid_ad_att_temp_conf', loss_valid_ad_att_temp_conf, 'loss_valid_mh_ad_att_temp_conf', loss_valid_mh_ad_att_temp_conf)
                     for name, param in model.named_parameters():
                         if 'scaling_factor' in name:

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
 # Set the number of times to run the script and the arguments to pass
-arguments=(None temperature att_temp mh_att_temp ad_att_temp mh_ad_att_temp)
+# arguments=(None temperature att_temp mh_att_temp ad_att_temp mh_ad_att_temp)
+arguments=(None temperature tau_temperature att_temp mh_att_temp d_att_temp d_plus_att_temp ad_att_temp d_ad_att_temp tau_att_temp mh_tau_att_temp d_tau_att_temp d_ad_tau_att_temp)
+
 N=${#arguments[@]}
 # arguments=(att_temp_conf mh_att_temp_conf ad_att_temp_conf mh_ad_att_temp_conf)
 
