@@ -174,7 +174,11 @@ class MultiheadAttention(FairseqIncrementalDecoder):
         self.scaling_factor_for_mh_ad_att_hidden_temp1 = torch.nn.Parameter(torch.zeros(num_heads), requires_grad=True)
         self.scaling_factor_for_mh_ad_att_hidden_temp2 = torch.nn.Parameter(torch.zeros(num_heads), requires_grad=True)
         self.scaling_factor_for_tau_att_hidden_temp1 = torch.nn.Parameter(torch.zeros(1), requires_grad=True) # Parameter(torch.Tensor(num_heads), requires_grad=False) # 
-        self.scaling_factor_for_tau_att_hidden_temp2 = torch.nn.Parameter(torch.zeros(1), requires_grad=True) # Parameter(torch.Tensor(num_heads), requires_grad=False) # 
+        self.scaling_factor_for_tau_att_hidden_temp2 = torch.nn.Parameter(torch.zeros(1), requires_grad=True) # Parameter(torch.Tensor(num_heads), requires_grad=False) #         self.scaling_factor_for_d_att_hidden_temp = torch.nn.Parameter(torch.zeros(embed_dim), requires_grad=True)
+        self.scaling_factor_for_d_att_hidden_temp = torch.nn.Parameter(torch.zeros(embed_dim), requires_grad=True)
+        self.scaling_factor_for_d_plus_att_hidden_temp = torch.nn.Parameter(torch.zeros(embed_dim), requires_grad=True)
+
+        
         
 
         if conf_calibration:

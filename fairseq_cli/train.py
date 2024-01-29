@@ -327,7 +327,6 @@ def train(
         valid_list.append(samples_valid)
 
     for i, samples in enumerate(progress):
-        samples, samples_valid = samples_zip
 
         with metrics.aggregate("train_inner"), torch.autograd.profiler.record_function(
             "train_step-%d" % i

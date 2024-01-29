@@ -161,7 +161,7 @@ class TransformerModelBase(FairseqEncoderDecoderModel):
         which are not supported by TorchScript.
         """
 
-        if type_calibration is not None and ('_conf' in type_calibration) and (self.training or use_pseudo_conf):
+        if type_calibration is not None and ('_conf' in type_calibration): # and (self.training or use_pseudo_conf):
             ###### 2.0 inference
             encoder_out = self.encoder(
                 src_tokens, src_lengths=src_lengths, return_all_hiddens=return_all_hiddens
