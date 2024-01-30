@@ -162,8 +162,13 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
                 net_output_valid_tau_att = model(**sample["net_input"], type_calibration=type_calibration)
                 loss_valid_tau_att, nll_loss_valid_tau_att = self.compute_loss(model, net_output_valid_tau_att, sample, reduce=reduce)
 
+                ####################### with mh-tau att-calibration #######################
+                type_calibration='mh_tau_att_temp'
+                net_output_valid_mh_tau_att = model(**sample["net_input"], type_calibration=type_calibration)
+                loss_valid_mh_tau_att, nll_loss_valid_mh_tau_att = self.compute_loss(model, net_output_valid_mh_tau_att, sample, reduce=reduce)
+
                 if torch.randperm(300)[0] == 0:
-                    print('loss_valid_none:', loss, 'loss_valid_temp:', loss_valid_temp,'loss_valid_tau_temp:', loss_valid_tau_temp, 'loss_valid_att:', loss_valid_att, 'loss_valid_mh_att:', loss_valid_mh_att, 'loss_valid_d_att:', loss_valid_d_att, 'loss_valid_d_plus_att:', loss_valid_d_plus_att, 'loss_valid_ad_att:', loss_valid_ad_att, 'loss_valid_mh_ad_att', loss_valid_mh_ad_att, 'loss_valid_tau_att:', loss_valid_tau_att)
+                    print('loss_valid_none:', loss, 'loss_valid_temp:', loss_valid_temp,'loss_valid_tau_temp:', loss_valid_tau_temp, 'loss_valid_att:', loss_valid_att, 'loss_valid_mh_att:', loss_valid_mh_att, 'loss_valid_d_att:', loss_valid_d_att, 'loss_valid_d_plus_att:', loss_valid_d_plus_att, 'loss_valid_ad_att:', loss_valid_ad_att, 'loss_valid_mh_ad_att', loss_valid_mh_ad_att, 'loss_valid_tau_att:', loss_valid_tau_att, 'loss_valid_mh_tau_att:', loss_valid_mh_tau_att)
                     print('loss_valid_conf_temp:', loss_valid_conf_temp,'loss_valid_conf_att_temp:', loss_valid_conf_att_temp, 'loss_valid_conf_mh_att_temp:', loss_valid_conf_mh_att_temp, 'loss_valid_conf_ad_att_temp:', loss_valid_conf_ad_att_temp, 'loss_valid_conf_mh_ad_att_temp', loss_valid_conf_mh_ad_att_temp)
             return loss, sample_size, logging_output
         else:
@@ -262,6 +267,23 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
                 if optimizer is not None:
                     with torch.autograd.profiler.record_function("backward"):
                         optimizer.backward(loss_valid_tau_att)
+
+                type_calibration = 'mh_tau_att_temp'
+                ######################## stop gradient descent for encoder & decoder ########################
+                for name, param in model.named_parameters(): 
+                    if 'scaling_factor_for_mh_tau_att' in name:
+                        param.requires_grad=True
+                    else:
+                        param.requires_grad=False
+                    if 'encoder_attn.scaling_factor_for' in name:
+                        param.requires_grad=False
+                ######################## stop gradient descent for encoder & decoder ########################
+                net_output_valid_mh_tau_att = model(**sample_valid["net_input"], type_calibration=type_calibration, scheduled_sampling=self.scheduled_sampling_cali, update_num=update_num)
+                loss_valid_mh_tau_att, nll_loss_valid_mh_tau_att = self.compute_loss(model, net_output_valid_mh_tau_att, sample_valid, reduce=reduce)
+
+                if optimizer is not None:
+                    with torch.autograd.profiler.record_function("backward"):
+                        optimizer.backward(loss_valid_mh_tau_att)
 
                 type_calibration = 'mh_att_temp'
                 ######################## stop gradient descent for encoder & decoder ########################
@@ -451,7 +473,7 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
 
                 ### print ###
                 if torch.randperm(5000)[0] == 0:
-                    print('(training) loss:', loss, 'loss_temp:', loss_valid_temp, 'loss_att:', loss_valid_att, 'loss_mh-att:', loss_valid_mh_att, 'loss_valid_d_att:', loss_valid_d_att, 'loss_valid_d_plus_att:', loss_valid_d_plus_att, 'loss_ad-att', loss_valid_ad_att, 'loss_mh-ad-att', loss_valid_mh_ad_att, 'loss_valid_tau_att:', loss_valid_tau_att)
+                    print('(training) loss:', loss, 'loss_temp:', loss_valid_temp, 'loss_att:', loss_valid_att, 'loss_mh-att:', loss_valid_mh_att, 'loss_valid_d_att:', loss_valid_d_att, 'loss_valid_d_plus_att:', loss_valid_d_plus_att, 'loss_ad-att', loss_valid_ad_att, 'loss_mh-ad-att', loss_valid_mh_ad_att, 'loss_valid_tau_att:', loss_valid_tau_att, 'loss_valid_mh_tau_att:', loss_valid_mh_tau_att)
                     print('(training) loss_valid_temp_conf:', loss_valid_temp_conf, 'loss_valid_att_temp_conf:', loss_valid_att_temp_conf, 'loss_valid_mh_att_temp_conf', loss_valid_mh_att_temp_conf, 'loss_valid_ad_att_temp_conf', loss_valid_ad_att_temp_conf, 'loss_valid_mh_ad_att_temp_conf', loss_valid_mh_ad_att_temp_conf)
                     for name, param in model.named_parameters():
                         if 'scaling_factor' in name:

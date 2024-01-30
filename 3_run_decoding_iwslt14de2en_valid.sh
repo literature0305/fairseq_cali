@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 
-# Set the number of times to run the script and the arguments to pass
-# arguments=(None temperature att_temp mh_att_temp ad_att_temp mh_ad_att_temp)
-arguments=(None temperature tau_temperature att_temp mh_att_temp d_att_temp d_plus_att_temp ad_att_temp mh_tau_att_temp d_ad_att_temp tau_att_temp temperature_conf att_temp_conf mh_att_temp_conf ad_att_temp_conf mh_ad_att_temp_conf)
+# Preprocess/binarize the data
+TEXT=examples/translation/iwslt14.tokenized.de-en
+fairseq-preprocess --source-lang de --target-lang en \
+    --trainpref $TEXT/train --validpref $TEXT/valid --testpref $TEXT/valid \
+    --destdir data-bin/iwslt14.tokenized.de-en_valid \
+    --workers 20
 
+# Set the number of times to run the script and the arguments to pass
+arguments=(None temperature tau_temperature att_temp mh_att_temp d_att_temp d_plus_att_temp ad_att_temp mh_tau_att_temp d_ad_att_temp tau_att_temp temperature_conf att_temp_conf mh_att_temp_conf ad_att_temp_conf mh_ad_att_temp_conf)
 
 N=${#arguments[@]}
 # arguments=(att_temp_conf mh_att_temp_conf ad_att_temp_conf mh_ad_att_temp_conf)
@@ -13,13 +18,13 @@ function run_recursive {
     # Get the number of arguments
     num_args=$1
     shift
-    to_write=errlog001-2_decode_${1}
+    to_write=errlog001-3_decode_validationset_${1}
     # If there are no more arguments, exit the function
     if [[ $num_args -eq 0 ]]; then
         return
     fi
     # Run the script with the next argument
-    fairseq-generate data-bin/iwslt14.tokenized.de-en \
+    fairseq-generate data-bin/iwslt14.tokenized.de-en_valid \
         --path checkpoints/checkpoint_best.pt \
         --batch-size 32 --beam 20 --remove-bpe --calibration-mode "$1" &> $to_write
 
@@ -29,8 +34,6 @@ function run_recursive {
 
 # Call the function to run the script recursively with all arguments
 run_recursive $N "${arguments[@]}"
-
-
 
 # # evaluation
 # fairseq-generate data-bin/iwslt14.tokenized.de-en \

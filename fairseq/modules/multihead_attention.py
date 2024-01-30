@@ -174,12 +174,11 @@ class MultiheadAttention(FairseqIncrementalDecoder):
         self.scaling_factor_for_mh_ad_att_hidden_temp1 = torch.nn.Parameter(torch.zeros(num_heads), requires_grad=True)
         self.scaling_factor_for_mh_ad_att_hidden_temp2 = torch.nn.Parameter(torch.zeros(num_heads), requires_grad=True)
         self.scaling_factor_for_tau_att_hidden_temp1 = torch.nn.Parameter(torch.zeros(1), requires_grad=True) # Parameter(torch.Tensor(num_heads), requires_grad=False) # 
-        self.scaling_factor_for_tau_att_hidden_temp2 = torch.nn.Parameter(torch.zeros(1), requires_grad=True) # Parameter(torch.Tensor(num_heads), requires_grad=False) #         self.scaling_factor_for_d_att_hidden_temp = torch.nn.Parameter(torch.zeros(embed_dim), requires_grad=True)
+        self.scaling_factor_for_tau_att_hidden_temp2 = torch.nn.Parameter(torch.zeros(1), requires_grad=True) # Parameter(torch.Tensor(num_heads), requires_grad=False) # 
         self.scaling_factor_for_d_att_hidden_temp = torch.nn.Parameter(torch.zeros(embed_dim), requires_grad=True)
         self.scaling_factor_for_d_plus_att_hidden_temp = torch.nn.Parameter(torch.zeros(embed_dim), requires_grad=True)
-
-        
-        
+        self.scaling_factor_for_mh_tau_att_hidden_temp1 = torch.nn.Parameter(torch.zeros(num_heads), requires_grad=True) # Parameter(torch.Tensor(num_heads), requires_grad=False) # 
+        self.scaling_factor_for_mh_tau_att_hidden_temp2 = torch.nn.Parameter(torch.zeros(num_heads), requires_grad=True) # Parameter(torch.Tensor(num_heads), requires_grad=False) # 
 
         if conf_calibration:
             self.scaling_factor_for_conf_att_hidden_temp1 = torch.nn.Parameter(torch.zeros(1), requires_grad=True)
@@ -821,6 +820,18 @@ class MultiheadAttention(FairseqIncrementalDecoder):
                 attn_weights = attn_weights * (1+self.scaling_factor_for_conf_mh_ad_att_hidden_temp1.view(1,self.num_heads,1,1) * self.lr_regularizer + entropy_att_weight * self.scaling_factor_for_conf_mh_ad_att_hidden_temp2.view(1,self.num_heads,1,1) * self.lr_regularizer + self.confidence * self.scaling_factor_for_conf_mh_ad_att_hidden_temp3.view(1,self.num_heads,1,1) * self.lr_regularizer)
             else:
                 attn_weights = attn_weights * (1+self.scaling_factor_for_conf_mh_ad_att_hidden_temp1.view(1,self.num_heads,1,1) * self.lr_regularizer + entropy_att_weight * self.scaling_factor_for_conf_mh_ad_att_hidden_temp2.view(1,self.num_heads,1,1) * self.lr_regularizer)
+
+        elif self.calibration_mode == 'mh_tau_att_temp':
+            if attn_mask is None:
+                k_len = torch.ones(q.size(1)).to(q.device).to(q.dtype) * k.size(1)
+            else:
+                k_len = (attn_mask == 0).sum(-1).detach()
+            k_len_before = k_len.clone().detach()
+            k_len = k_len.unsqueeze(-1).repeat(1,self.num_heads) # (t,h)
+            k_len = torch.pow(k_len, self.scaling_factor_for_mh_tau_att_hidden_temp1) * (1+self.scaling_factor_for_mh_tau_att_hidden_temp2) # (t,h)
+            k_len = k_len.transpose(0,1) # (h,t)
+            attn_weights = attn_weights * (k_len).unsqueeze(-1).unsqueeze(0)
+
         ###################################################################################################################################################################
 
         if attn_mask is not None:
