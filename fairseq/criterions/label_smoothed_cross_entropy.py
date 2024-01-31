@@ -278,7 +278,7 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
                     if 'encoder_attn.scaling_factor_for' in name:
                         param.requires_grad=False
                 ######################## stop gradient descent for encoder & decoder ########################
-                net_output_valid_mh_tau_att = model(**sample_valid["net_input"], type_calibration=type_calibration, scheduled_sampling=self.scheduled_sampling_cali, update_num=update_num)
+                net_output_valid_mh_tau_att = model(**sample_valid["net_input"], type_calibration=type_calibration)
                 loss_valid_mh_tau_att, nll_loss_valid_mh_tau_att = self.compute_loss(model, net_output_valid_mh_tau_att, sample_valid, reduce=reduce)
 
                 if optimizer is not None:
